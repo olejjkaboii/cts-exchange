@@ -162,8 +162,11 @@
         
         async function loadOrders() {
             try {
+                console.log('Loading orders...');
                 const response = await fetch('/api/orders');
+                console.log('Response status:', response.status);
                 orders = await response.json();
+                console.log('Orders loaded:', orders.length);
                 renderOrders();
             } catch (error) {
                 console.error('Error loading orders:', error);
