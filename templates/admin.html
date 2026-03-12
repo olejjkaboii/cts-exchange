@@ -217,6 +217,7 @@
             }
             
             tbody.innerHTML = html;
+            console.log('tbody.innerHTML length:', tbody.innerHTML.length);
             
             document.getElementById('countPending').textContent = pending;
             document.getElementById('countPaid').textContent = paid;
@@ -246,6 +247,8 @@
         }
         
         loadOrders();
+        
+        setInterval(loadOrders, 5000);
     </script>
 </body>
 </html>
