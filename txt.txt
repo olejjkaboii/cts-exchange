@@ -1,0 +1,11 @@
+cd C:\Users\Admin\Desktop\CTS
+python -m venv venv
+.\venv\Scripts\activate.bat
+
+
+http://127.0.0.1:8000/docs#/default/create_order_orders_post
+uvicorn app:app --reload
+
+
+l8gRoKTjMsPcwsLrzo
+uRseqWNF4cQkvFPmUZUFElT3F7wNtAHgneiK
