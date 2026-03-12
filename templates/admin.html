@@ -175,6 +175,7 @@
         
         function renderOrders() {
             const tbody = document.getElementById('ordersTable');
+            console.log('Rendering', orders.length, 'orders');
             
             if (orders.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty">Нет заказов</td></tr>';
@@ -182,8 +183,10 @@
             }
             
             let pending = 0, paid = 0, canceled = 0;
+            let html = '';
             
-            tbody.innerHTML = orders.map(order => {
+            for (let i = 0; i < orders.length; i++) {
+                const order = orders[i];
                 if (order.status === 'pending') pending++;
                 if (order.status === 'paid') paid++;
                 if (order.status === 'canceled') canceled++;
@@ -192,24 +195,28 @@
                 const dateStr = date.toLocaleDateString('ru-RU');
                 const timeStr = date.toLocaleTimeString('ru-RU');
                 
-                return `
-                    <tr>
-                        <td><strong>${order.order_id}</strong></td>
-                        <td>${dateStr}<br><small>${timeStr}</small></td>
-                        <td><strong>${order.amount_usdt}</strong> USDT</td>
-                        <td>${order.bank}</td>
-                        <td>${order.phone}</td>
-                        <td class="address-cell" title="${order.deposit_address}">${order.deposit_address}</td>
-                        <td>
-                            <select class="status-select" onchange="updateStatus('${order.order_id}', this.value)">
-                                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ожидание</option>
-                                <option value="paid" ${order.status === 'paid' ? 'selected' : ''}>Оплачено</option>
-                                <option value="canceled" ${order.status === 'canceled' ? 'selected' : ''}>Отменено</option>
-                            </select>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                const selectedPending = order.status === 'pending' ? 'selected' : '';
+                const selectedPaid = order.status === 'paid' ? 'selected' : '';
+                const selectedCanceled = order.status === 'canceled' ? 'selected' : '';
+                
+                html += '<tr>' +
+                    '<td><strong>' + order.order_id + '</strong></td>' +
+                    '<td>' + dateStr + '<br><small>' + timeStr + '</small></td>' +
+                    '<td><strong>' + order.amount_usdt + '</strong> USDT</td>' +
+                    '<td>' + order.bank + '</td>' +
+                    '<td>' + order.phone + '</td>' +
+                    '<td class="address-cell" title="' + order.deposit_address + '">' + order.deposit_address + '</td>' +
+                    '<td>' +
+                        '<select class="status-select" onchange="updateStatus(\'' + order.order_id + '\', this.value)">' +
+                            '<option value="pending" ' + selectedPending + '>Ожидание</option>' +
+                            '<option value="paid" ' + selectedPaid + '>Оплачено</option>' +
+                            '<option value="canceled" ' + selectedCanceled + '>Отменено</option>' +
+                        '</select>' +
+                    '</td>' +
+                '</tr>';
+            }
+            
+            tbody.innerHTML = html;
             
             document.getElementById('countPending').textContent = pending;
             document.getElementById('countPaid').textContent = paid;
