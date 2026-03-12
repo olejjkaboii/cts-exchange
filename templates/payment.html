@@ -163,18 +163,24 @@
             btn.textContent = 'Создание заказа...';
             
             try {
+                const payload = {
+                    amount_usdt: parseFloat(formData.get('amount_usdt')),
+                    bank: formData.get('bank'),
+                    phone: formData.get('phone')
+                };
+                console.log('Sending:', JSON.stringify(payload));
+                
                 const response = await fetch('/api/orders', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        amount_usdt: parseFloat(formData.get('amount_usdt')),
-                        bank: formData.get('bank'),
-                        phone: formData.get('phone')
-                    })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
                 });
                 
                 const text = await response.text();
-                console.log('Response:', text);
+                console.log('Response:', text, 'Status:', response.status);
                 
                 if (!response.ok) {
                     alert('Ошибка: ' + text);
