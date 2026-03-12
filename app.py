@@ -33,13 +33,19 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+if os.getenv("RENDER"):
+    DB_PATH = "/var/data/orders.db"
+    os.makedirs("/var/data", exist_ok=True)
+else:
+    DB_PATH = os.path.join(BASE_DIR, "orders.db")
+
 BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
 BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
 
 if not BYBIT_API_KEY or not BYBIT_API_SECRET:
     raise ValueError("Добавь ключи в .env файл!")
 
-DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'orders.db')}"
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
