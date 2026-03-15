@@ -38,12 +38,6 @@ if os.getenv("RENDER"):
 else:
     DB_PATH = os.path.join(BASE_DIR, "orders.db")
 
-BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
-BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
-
-if not BYBIT_API_KEY or not BYBIT_API_SECRET:
-    raise ValueError("Добавь ключи в .env файл!")
-
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -68,13 +62,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-BYBIT_DEPOSIT_ADDRESS = os.getenv("BYBIT_DEPOSIT_ADDRESS", "")
-
-def get_bybit_deposit_address():
-    if BYBIT_DEPOSIT_ADDRESS:
-        return BYBIT_DEPOSIT_ADDRESS
-    raise Exception("Адрес не настроен")
 
 class OrderCreate(BaseModel):
     amount_usdt: float
@@ -104,8 +91,8 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
         from tron_wallet import create_trc20_address
         deposit_address = create_trc20_address()
     except Exception as e:
-        logger.error(f"Error importing tron_wallet: {e}")
-        deposit_address = get_bybit_deposit_address()
+        logger.error(f"Error creating address: {e}")
+        raise HTTPException(status_code=500, detail="Не удалось создать адрес депозита")
     
     logger.info(f"Deposit address: {deposit_address}")
     if not deposit_address:
