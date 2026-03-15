@@ -87,9 +87,15 @@ async def admin_page(request: Request):
 async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     logger.info(f"Creating order: {order}")
     
+    order_id = str(uuid.uuid4())[:8].upper()
+    
+    # Получаем количество заказов для индекса
+    order_count = db.query(Order).count()
+    address_index = order_count
+    
     try:
         from tron_wallet import create_trc20_address
-        deposit_address = create_trc20_address()
+        deposit_address = create_trc20_address(address_index)
     except Exception as e:
         logger.error(f"Error creating address: {e}")
         raise HTTPException(status_code=500, detail="Не удалось создать адрес депозита")
@@ -98,7 +104,6 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     if not deposit_address:
         raise HTTPException(status_code=500, detail="Не удалось получить адрес депозита")
     
-    order_id = str(uuid.uuid4())[:8].upper()
     new_order = Order(
         order_id=order_id,
         amount_usdt=order.amount_usdt,
