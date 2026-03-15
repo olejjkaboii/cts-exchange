@@ -11,7 +11,6 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
 from typing import List, Optional
-from pybit.unified_trading import HTTP
 import uvicorn
 
 logging.basicConfig(level=logging.INFO)
@@ -73,28 +72,9 @@ def get_db():
 BYBIT_DEPOSIT_ADDRESS = os.getenv("BYBIT_DEPOSIT_ADDRESS", "")
 
 def get_bybit_deposit_address():
-    try:
-        session = HTTP(
-            testnet=False, 
-            api_key=BYBIT_API_KEY, 
-            api_secret=BYBIT_API_SECRET, 
-            recv_window=30000
-        )
-        result = session.get_master_deposit_address(
-            coin="USDT",
-            chainType="TRX"
-        )
-        if result.get("retCode") == 0:
-            chains = result.get("result", {}).get("chains", [])
-            if chains:
-                return chains[0].get("addressDeposit")
-    except Exception as e:
-        print(f"Error getting deposit address: {e}")
-    
     if BYBIT_DEPOSIT_ADDRESS:
         return BYBIT_DEPOSIT_ADDRESS
-    
-    raise Exception("Не удалось получить адрес депозита. Добавь BYBIT_DEPOSIT_ADDRESS в .env")
+    raise Exception("Адрес не настроен")
 
 class OrderCreate(BaseModel):
     amount_usdt: float
@@ -119,7 +99,14 @@ async def admin_page(request: Request):
 @app.post("/api/orders")
 async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     logger.info(f"Creating order: {order}")
-    deposit_address = get_bybit_deposit_address()
+    
+    try:
+        from tron_wallet import create_trc20_address
+        deposit_address = create_trc20_address()
+    except Exception as e:
+        logger.error(f"Error importing tron_wallet: {e}")
+        deposit_address = get_bybit_deposit_address()
+    
     logger.info(f"Deposit address: {deposit_address}")
     if not deposit_address:
         raise HTTPException(status_code=500, detail="Не удалось получить адрес депозита")
