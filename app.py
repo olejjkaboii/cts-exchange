@@ -33,8 +33,11 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if os.getenv("RENDER"):
-    DB_PATH = "/var/data/orders.db"
-    os.makedirs("/var/data", exist_ok=True)
+    try:
+        DB_PATH = "/var/data/orders.db"
+        os.makedirs("/var/data", exist_ok=True)
+    except:
+        DB_PATH = os.path.join(BASE_DIR, "orders.db")
 else:
     DB_PATH = os.path.join(BASE_DIR, "orders.db")
 
