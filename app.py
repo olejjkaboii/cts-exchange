@@ -154,6 +154,30 @@ async def update_order_status(order_id: str, update: OrderUpdate, db: Session = 
     db.commit()
     return {"status": "success", "new_status": order.status}
 
+@app.get("/api/rate")
+async def get_usdt_rate():
+    try:
+        import requests
+        from xml.etree import ElementTree as ET
+        
+        url = 'https://api.rapira.net/open/market/rates_xml'
+        headers = {'Accept': 'application/xml'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        root = ET.fromstring(response.content)
+        for item in root.findall('item'):
+            fr = item.find('from').text
+            to = item.find('to').text
+            out = item.find('out').text
+            if fr == 'USDT' and to == 'RUB':
+                return {"rate": float(out), "source": "Rapira"}
+        
+        return {"error": "Пара USDT/RUB не найдена"}
+    except Exception as e:
+        logger.error(f"Rate fetch error: {e}")
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

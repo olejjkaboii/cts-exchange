@@ -259,27 +259,11 @@
         
         async function fetchRate() {
             try {
-                const response = await fetch('https://api.rapira.net/open/market/rates_xml');
-                const text = await response.text();
+                const response = await fetch('/api/rate');
+                const data = await response.json();
                 
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(text, 'text/xml');
-                
-                const items = xml.querySelectorAll('item');
-                let rate = null;
-                
-                items.forEach(item => {
-                    const from = item.querySelector('from')?.textContent;
-                    const to = item.querySelector('to')?.textContent;
-                    const out = item.querySelector('out')?.textContent;
-                    
-                    if (from === 'USDT' && to === 'RUB') {
-                        rate = parseFloat(out).toFixed(2);
-                    }
-                });
-                
-                if (rate) {
-                    document.getElementById('usdtRate').textContent = rate + ' ₽';
+                if (data.rate) {
+                    document.getElementById('usdtRate').textContent = parseFloat(data.rate).toFixed(2) + ' ₽';
                     const now = new Date();
                     document.getElementById('rateUpdateTime').textContent = 'Обновлено: ' + now.toLocaleTimeString('ru-RU');
                 } else {
