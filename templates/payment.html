@@ -122,6 +122,10 @@
             font-size: 12px;
             margin-bottom: 5px;
         }
+        .rate-display .label span {
+            color: #ef4444;
+            font-size: 11px;
+        }
         .rate-display .value {
             color: #22c55e;
             font-size: 24px;
@@ -151,7 +155,7 @@
 <body>
     <div class="container">
         <div class="rate-display">
-            <div class="label">Курс USDT/RUB (Rapira)</div>
+            <div class="label">Курс USDT/RUB <span>(-3%)</span></div>
             <div class="value" id="usdtRate">Загрузка...</div>
             <div class="rate-progress">
                 <div class="rate-progress-bar" id="rateProgressBar"></div>
@@ -282,7 +286,9 @@
                 const data = await response.json();
                 
                 if (data.rate) {
-                    document.getElementById('usdtRate').textContent = parseFloat(data.rate).toFixed(2) + ' ₽';
+                    const originalRate = parseFloat(data.rate);
+                    const discountedRate = (originalRate * 0.97).toFixed(2);
+                    document.getElementById('usdtRate').textContent = discountedRate + ' ₽';
                     rateCountdown = 60;
                 } else {
                     document.getElementById('usdtRate').textContent = 'Курс не найден';
