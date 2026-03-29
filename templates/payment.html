@@ -150,6 +150,39 @@
             width: 100%;
             transition: width 1s linear;
         }
+        .receive-amount {
+            font-size: 14px;
+            color: #22c55e;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        .payment-methods {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .payment-method {
+            flex: 1;
+            padding: 12px;
+            background: #252525;
+            border: 2px solid #333;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            color: #888;
+            transition: all 0.3s;
+        }
+        .payment-method:hover {
+            border-color: #4f46e5;
+        }
+        .payment-method.active {
+            border-color: #4f46e5;
+            background: #1a1a3a;
+            color: #fff;
+        }
+        .hidden-field {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -165,11 +198,30 @@
         <form id="paymentForm">
             <div class="form-group">
                 <label>Сумма USDT</label>
-                <input type="number" step="0.01" min="1" name="amount_usdt" required placeholder="Введите сумму">
+                <input type="number" step="0.01" min="1" name="amount_usdt" id="amountInput" required placeholder="Введите сумму">
+                <div class="receive-amount" id="receiveAmount">К получению: 0 ₽</div>
             </div>
+            
             <div class="form-group">
-                <label>Банк</label>
-                <select name="bank" required>
+                <label>Способ получения</label>
+                <div class="payment-methods">
+                    <div class="payment-method active" data-method="card" onclick="selectMethod('card')">
+                        Карта
+                    </div>
+                    <div class="payment-method" data-method="spb" onclick="selectMethod('spb')">
+                        СБП
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group" id="cardField">
+                <label>Номер карты</label>
+                <input type="text" name="card_number" placeholder="XXXX XXXX XXXX XXXX">
+            </div>
+            
+            <div class="form-group hidden-field" id="spbField">
+                <label>Банк для СБП</label>
+                <select name="spb_bank" id="spbBankSelect">
                     <option value="">Выберите банк</option>
                     <option value="Сбербанк">Сбербанк</option>
                     <option value="Тинькофф">Тинькофф</option>
@@ -177,12 +229,19 @@
                     <option value="ВТБ">ВТБ</option>
                     <option value="Райффайзен">Райффайзен</option>
                     <option value="Газпромбанк">Газпромбанк</option>
+                    <option value="Открытие">Открытие</option>
+                    <option value="Почта Банк">Почта Банк</option>
+                    <option value="РНКБ">РНКБ</option>
+                    <option value="Ак Барс">Ак Барс</option>
+                    <option value="Уралсиб">Уралсиб</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>Номер телефона</label>
-                <input type="tel" name="phone" required placeholder="+7 999 123-45-67">
+            
+            <div class="form-group hidden-field" id="phoneField">
+                <label>Номер телефона для СБП</label>
+                <input type="tel" name="phone" placeholder="+7 999 123-45-67">
             </div>
+            
             <button type="submit" id="submitBtn">Создать заказ</button>
         </form>
         
@@ -206,6 +265,39 @@
     </div>
 
     <script>
+        let currentRate = 0;
+        let selectedMethod = 'card';
+        
+        function selectMethod(method) {
+            selectedMethod = method;
+            document.querySelectorAll('.payment-method').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelector(`[data-method="${method}"]`).classList.add('active');
+            
+            const cardField = document.getElementById('cardField');
+            const spbField = document.getElementById('spbField');
+            const phoneField = document.getElementById('phoneField');
+            
+            if (method === 'card') {
+                cardField.classList.remove('hidden-field');
+                spbField.classList.add('hidden-field');
+                phoneField.classList.add('hidden-field');
+            } else {
+                cardField.classList.add('hidden-field');
+                spbField.classList.remove('hidden-field');
+                phoneField.classList.remove('hidden-field');
+            }
+        }
+        
+        function updateReceiveAmount() {
+            const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+            const receive = (amount * currentRate).toFixed(2);
+            document.getElementById('receiveAmount').textContent = 'К получению: ' + receive + ' ₽';
+        }
+        
+        document.getElementById('amountInput').addEventListener('input', updateReceiveAmount);
+        
         document.getElementById('paymentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -216,10 +308,28 @@
             btn.textContent = 'Создание заказа...';
             
             try {
+                let paymentDetails = {};
+                
+                if (selectedMethod === 'card') {
+                    paymentDetails = {
+                        method: 'card',
+                        card_number: formData.get('card_number')
+                    };
+                } else {
+                    paymentDetails = {
+                        method: 'spb',
+                        spb_bank: formData.get('spb_bank'),
+                        phone: formData.get('phone')
+                    };
+                }
+                
+                const amount = parseFloat(formData.get('amount_usdt'));
+                const receiveAmount = (amount * currentRate).toFixed(2);
+                
                 const payload = {
-                    amount_usdt: parseFloat(formData.get('amount_usdt')),
-                    bank: formData.get('bank'),
-                    phone: formData.get('phone')
+                    amount_usdt: amount,
+                    receive_amount: parseFloat(receiveAmount),
+                    ...paymentDetails
                 };
                 console.log('Sending:', JSON.stringify(payload));
                 
@@ -286,10 +396,10 @@
                 const data = await response.json();
                 
                 if (data.rate) {
-                    const originalRate = parseFloat(data.rate);
-                    const discountedRate = (originalRate * 0.97).toFixed(2);
-                    document.getElementById('usdtRate').textContent = discountedRate + ' ₽';
+                    currentRate = (parseFloat(data.rate) * 0.97).toFixed(2);
+                    document.getElementById('usdtRate').textContent = currentRate + ' ₽';
                     rateCountdown = 60;
+                    updateReceiveAmount();
                 } else {
                     document.getElementById('usdtRate').textContent = 'Курс не найден';
                 }
@@ -309,8 +419,10 @@
             }
         }
         
-        fetchRate();
-        setInterval(updateProgressBar, 1000);
+        if (!window.rateInterval) {
+            fetchRate();
+            window.rateInterval = setInterval(updateProgressBar, 1000);
+        }
     </script>
 </body>
 </html>

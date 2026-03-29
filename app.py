@@ -28,6 +28,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/favicon.ico")
+async def favicon():
+    return {"status": "ok"}
+
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,10 +56,13 @@ class Order(Base):
     order_id = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.now)
     amount_usdt = Column(Float)
-    bank = Column(String)
-    phone = Column(String)
+    receive_amount = Column(Float)
+    payment_method = Column(String)  # card or spb
+    card_number = Column(String, nullable=True)
+    spb_bank = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
     deposit_address = Column(String)
-    status = Column(String, default="pending")
+    status = Column(String, default="accepted")  # accepted -> pending -> paid/canceled
 
 Base.metadata.create_all(bind=engine)
 
@@ -68,8 +75,11 @@ def get_db():
 
 class OrderCreate(BaseModel):
     amount_usdt: float
-    bank: str
-    phone: str
+    receive_amount: float
+    method: str
+    card_number: Optional[str] = None
+    spb_bank: Optional[str] = None
+    phone: Optional[str] = None
 
 class OrderUpdate(BaseModel):
     status: str
@@ -92,7 +102,6 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     
     order_id = str(uuid.uuid4())[:8].upper()
     
-    # Получаем количество заказов для индекса
     order_count = db.query(Order).count()
     address_index = order_count
     
@@ -110,14 +119,40 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     new_order = Order(
         order_id=order_id,
         amount_usdt=order.amount_usdt,
-        bank=order.bank,
+        receive_amount=order.receive_amount,
+        payment_method=order.method,
+        card_number=order.card_number,
+        spb_bank=order.spb_bank,
         phone=order.phone,
         deposit_address=deposit_address,
-        status="pending"
+        status="accepted"
     )
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
+    
+    import threading
+    
+    def run_withdrawal():
+        from deposit_from_funpay import deposit_from_funpay
+        try:
+            result = deposit_from_funpay(
+                order_id,
+                order.method,
+                order.card_number,
+                order.spb_bank,
+                order.phone,
+                order.receive_amount
+            )
+            logger.info(f"FunPay result: {result}")
+        except Exception as e:
+            logger.error(f"FunPay withdrawal error: {e}")
+    
+    withdrawal_thread = threading.Thread(target=run_withdrawal)
+    withdrawal_thread.start()
+    
+    new_order.status = "pending"
+    db.commit()
     
     return {
         "order_id": new_order.order_id,
@@ -135,7 +170,10 @@ async def get_orders(db: Session = Depends(get_db)):
         "order_id": o.order_id,
         "created_at": o.created_at.isoformat(),
         "amount_usdt": o.amount_usdt,
-        "bank": o.bank,
+        "receive_amount": o.receive_amount,
+        "payment_method": o.payment_method,
+        "card_number": o.card_number,
+        "spb_bank": o.spb_bank,
         "phone": o.phone,
         "deposit_address": o.deposit_address,
         "status": o.status
@@ -154,8 +192,15 @@ async def update_order_status(order_id: str, update: OrderUpdate, db: Session = 
     db.commit()
     return {"status": "success", "new_status": order.status}
 
+rate_cache = {"rate": None, "time": 0}
+
 @app.get("/api/rate")
 async def get_usdt_rate():
+    import time
+    
+    if rate_cache["rate"] and (time.time() - rate_cache["time"]) < 60:
+        return {"rate": rate_cache["rate"], "source": "Rapira (cached)"}
+    
     try:
         import requests
         from xml.etree import ElementTree as ET
@@ -171,11 +216,15 @@ async def get_usdt_rate():
             to = item.find('to').text
             out = item.find('out').text
             if fr == 'USDT' and to == 'RUB':
+                rate_cache["rate"] = float(out)
+                rate_cache["time"] = time.time()
                 return {"rate": float(out), "source": "Rapira"}
         
         return {"error": "Пара USDT/RUB не найдена"}
     except Exception as e:
         logger.error(f"Rate fetch error: {e}")
+        if rate_cache["rate"]:
+            return {"rate": rate_cache["rate"], "source": "Rapira (cached)"}
         return {"error": str(e)}
 
 if __name__ == "__main__":

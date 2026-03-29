@@ -1,0 +1,29 @@
+[
+{
+    "domain": ".funpay.com",
+    "expirationDate": 1783452888.117026,
+    "hostOnly": false,
+    "httpOnly": true,
+    "name": "golden_key",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "krrubf6sr9r2txv37ewf2f3evpal331q",
+    "id": 1
+},
+{
+    "domain": "funpay.com",
+    "hostOnly": true,
+    "httpOnly": true,
+    "name": "PHPSESSID",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": true,
+    "session": true,
+    "storeId": "0",
+    "value": "flyxYEYOeAiRLTkjMPmGqnK3lq-EDlH%2C",
+    "id": 2
+}
+]

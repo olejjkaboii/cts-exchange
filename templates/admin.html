@@ -127,6 +127,10 @@
     
     <div class="stats">
         <div class="stat-card pending">
+            <h3>Приняты</h3>
+            <div class="value" id="countAccepted">0</div>
+        </div>
+        <div class="stat-card pending">
             <h3>Ожидают оплаты</h3>
             <div class="value" id="countPending">0</div>
         </div>
@@ -145,9 +149,8 @@
             <tr>
                 <th>ID</th>
                 <th>Дата/Время</th>
-                <th>Сумма USDT</th>
-                <th>Банк</th>
-                <th>Телефон</th>
+                <th>USDT / Рубли</th>
+                <th>Получатель</th>
                 <th>Адрес</th>
                 <th>Статус</th>
             </tr>
@@ -178,15 +181,16 @@
             console.log('Rendering', orders.length, 'orders');
             
             if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty">Нет заказов</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет заказов</td></tr>';
                 return;
             }
             
-            let pending = 0, paid = 0, canceled = 0;
+            let accepted = 0, pending = 0, paid = 0, canceled = 0;
             let html = '';
             
             for (let i = 0; i < orders.length; i++) {
                 const order = orders[i];
+                if (order.status === 'accepted') accepted++;
                 if (order.status === 'pending') pending++;
                 if (order.status === 'paid') paid++;
                 if (order.status === 'canceled') canceled++;
@@ -198,16 +202,24 @@
                 const selectedPending = order.status === 'pending' ? 'selected' : '';
                 const selectedPaid = order.status === 'paid' ? 'selected' : '';
                 const selectedCanceled = order.status === 'canceled' ? 'selected' : '';
+                const selectedAccepted = order.status === 'accepted' ? 'selected' : '';
+                
+                let paymentInfo = '';
+                if (order.payment_method === 'card') {
+                    paymentInfo = 'Карта: ' + (order.card_number || '-');
+                } else if (order.payment_method === 'spb') {
+                    paymentInfo = 'СБП: ' + (order.spb_bank || '-') + ' ' + (order.phone || '-');
+                }
                 
                 html += '<tr>' +
                     '<td><strong>' + order.order_id + '</strong></td>' +
                     '<td>' + dateStr + '<br><small>' + timeStr + '</small></td>' +
-                    '<td><strong>' + order.amount_usdt + '</strong> USDT</td>' +
-                    '<td>' + order.bank + '</td>' +
-                    '<td>' + order.phone + '</td>' +
+                    '<td><strong>' + order.amount_usdt + '</strong> USDT<br><small style="color:#22c55e;">' + order.receive_amount + ' ₽</small></td>' +
+                    '<td>' + paymentInfo + '</td>' +
                     '<td class="address-cell" title="' + order.deposit_address + '">' + order.deposit_address + '</td>' +
                     '<td>' +
                         '<select class="status-select" onchange="updateStatus(\'' + order.order_id + '\', this.value)">' +
+                            '<option value="accepted" ' + selectedAccepted + '>Принята</option>' +
                             '<option value="pending" ' + selectedPending + '>Ожидание</option>' +
                             '<option value="paid" ' + selectedPaid + '>Оплачено</option>' +
                             '<option value="canceled" ' + selectedCanceled + '>Отменено</option>' +
@@ -219,6 +231,7 @@
             tbody.innerHTML = html;
             console.log('tbody.innerHTML length:', tbody.innerHTML.length);
             
+            document.getElementById('countAccepted').textContent = accepted;
             document.getElementById('countPending').textContent = pending;
             document.getElementById('countPaid').textContent = paid;
             document.getElementById('countCanceled').textContent = canceled;
