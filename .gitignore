@@ -5,3 +5,5 @@ __pycache__/
 orders.db
 node_modules/
 *.egg-info/
+funpay-cookie.json
+*.html
