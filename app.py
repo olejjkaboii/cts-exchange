@@ -106,8 +106,8 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     address_index = order_count
     
     try:
-        from tron_wallet import create_trc20_address
-        deposit_address = create_trc20_address(address_index)
+        from tron_wallet import generate_address
+        deposit_address, _ = generate_address(address_index)
     except Exception as e:
         logger.error(f"Error creating address: {e}")
         raise HTTPException(status_code=500, detail="Не удалось создать адрес депозита")

@@ -1,4 +1,5 @@
 aiosqlite==0.22.1
+bip_utils==2.15.0
 altgraph==0.17.5
 annotated-doc==0.0.4
 annotated-types==0.7.0
