@@ -1,6 +1,11 @@
 import os
 import uuid
 import logging
+import threading
+import time
+import signal
+import sys
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -18,7 +23,39 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-app = FastAPI(title="Crypto Exchange API")
+shutdown_event = threading.Event()
+active_threads = []
+threads_lock = threading.Lock()
+
+
+def signal_handler(signum, frame):
+    logger.info(f"Received signal {signum}, initiating shutdown...")
+    stop_all_threads()
+    sys.exit(0)
+
+
+def stop_all_threads():
+    logger.info("Stopping all active polling threads...")
+    shutdown_event.set()
+    with threads_lock:
+        for thread in active_threads:
+            if thread.is_alive():
+                logger.info(f"Joining thread: {thread.name}")
+                # Don't join, just let them check the event
+    logger.info("All threads signaled to stop")
+
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    stop_all_threads()
+
+
+app = FastAPI(title="Crypto Exchange API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -125,34 +162,77 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
         spb_bank=order.spb_bank,
         phone=order.phone,
         deposit_address=deposit_address,
-        status="accepted"
+        status="awaiting_deposit"
     )
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
     
-    import threading
-    
-    def run_withdrawal():
+    def poll_balance():
+        from tron_wallet import check_usdt_balance
         from deposit_from_funpay import deposit_from_funpay
+        
+        expected_amount = float(order.amount_usdt)
+        max_attempts = 180
+        attempt = 0
+        
+        while attempt < max_attempts:
+            if shutdown_event.is_set():
+                logger.info(f"Order {order_id}: Shutdown requested, stopping poll")
+                return
+            
+            try:
+                balance = check_usdt_balance(deposit_address)
+                logger.info(f"Order {order_id}: balance = {balance} USDT (expected {expected_amount})")
+                
+                if balance >= expected_amount:
+                    logger.info(f"Order {order_id}: Deposit received! Starting withdrawal...")
+                    
+                    result = deposit_from_funpay(
+                        order_id,
+                        order.method,
+                        order.card_number,
+                        order.spb_bank,
+                        order.phone,
+                        order.receive_amount
+                    )
+                    logger.info(f"FunPay result: {result}")
+                    
+                    db_session = SessionLocal()
+                    try:
+                        db_order = db_session.query(Order).filter(Order.order_id == order_id).first()
+                        if db_order:
+                            db_order.status = "pending"
+                            db_session.commit()
+                    finally:
+                        db_session.close()
+                    
+                    return
+                    
+            except Exception as e:
+                logger.error(f"Order {order_id}: Error polling balance: {e}")
+            
+            attempt += 1
+            shutdown_event.wait(timeout=5)
+        
+        if shutdown_event.is_set():
+            logger.info(f"Order {order_id}: Shutdown requested, not expiring")
+            return
+        
+        logger.warning(f"Order {order_id}: Timeout waiting for deposit")
+        db_session = SessionLocal()
         try:
-            result = deposit_from_funpay(
-                order_id,
-                order.method,
-                order.card_number,
-                order.spb_bank,
-                order.phone,
-                order.receive_amount
-            )
-            logger.info(f"FunPay result: {result}")
-        except Exception as e:
-            logger.error(f"FunPay withdrawal error: {e}")
+            db_order = db_session.query(Order).filter(Order.order_id == order_id).first()
+            if db_order and db_order.status == "awaiting_deposit":
+                db_order.status = "expired"
+                db_session.commit()
+        finally:
+            db_session.close()
     
-    withdrawal_thread = threading.Thread(target=run_withdrawal)
-    withdrawal_thread.start()
-    
-    new_order.status = "pending"
-    db.commit()
+    poll_thread = threading.Thread(target=poll_balance, name=f"poll_{order_id}")
+    with threads_lock:
+        active_threads.append(poll_thread)
+    poll_thread.start()
     
     return {
         "order_id": new_order.order_id,

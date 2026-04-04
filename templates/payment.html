@@ -156,6 +156,33 @@
             margin-top: 5px;
             font-weight: 500;
         }
+        }
+        .timer-display {
+            background: linear-gradient(135deg, #3d1515 0%, #5a2020 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: center;
+            border: 1px solid #6b3030;
+        }
+        .timer-display .label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .timer-display .value {
+            color: #ef4444;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .timer-display.expiring {
+            background: linear-gradient(135deg, #3d1515 0%, #7a2020 100%);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
         .payment-methods {
             display: flex;
             gap: 10px;
@@ -257,6 +284,13 @@
                 <div id="qrCode" style="display: inline-block;"></div>
             </div>
             <p style="margin-top: 15px;"><span class="label">Статус:</span> <span class="value" id="resStatus"></span></p>
+            <div class="timer-display" id="timerDisplay">
+                <div class="label">Время до истечения заказа</div>
+                <div class="value" id="timerValue">15:00</div>
+                <div class="rate-progress">
+                    <div class="rate-progress-bar" id="timerProgressBar"></div>
+                </div>
+            </div>
         </div>
         
         <div class="admin-link">
@@ -369,6 +403,8 @@
                         width: 180,
                         height: 180
                     });
+                    
+                    startOrderTimer(data.order_id);
                 } else {
                     alert('Ошибка: ' + (data.detail || 'Unknown error'));
                 }
@@ -422,6 +458,53 @@
         if (!window.rateInterval) {
             fetchRate();
             window.rateInterval = setInterval(updateProgressBar, 1000);
+        }
+        
+        let orderTimerInterval = null;
+        let orderTimerCountdown = 900;
+        
+        function startOrderTimer(orderId) {
+            if (orderTimerInterval) {
+                clearInterval(orderTimerInterval);
+            }
+            
+            orderTimerCountdown = 900;
+            updateOrderTimerDisplay();
+            
+            orderTimerInterval = setInterval(async () => {
+                orderTimerCountdown--;
+                updateOrderTimerDisplay();
+                
+                if (orderTimerCountdown <= 0) {
+                    clearInterval(orderTimerInterval);
+                    document.getElementById('resStatus').textContent = 'expired';
+                    return;
+                }
+                
+                const statusEl = document.getElementById('resStatus');
+                if (statusEl.textContent === 'pending' || statusEl.textContent === 'paid' || statusEl.textContent === 'expired' || statusEl.textContent === 'canceled') {
+                    clearInterval(orderTimerInterval);
+                    return;
+                }
+            }, 1000);
+        }
+        
+        function updateOrderTimerDisplay() {
+            const minutes = Math.floor(orderTimerCountdown / 60);
+            const seconds = orderTimerCountdown % 60;
+            const timeStr = minutes.toString().padStart(2, '0') + ':' + seconds.toString().padStart(2, '0');
+            
+            document.getElementById('timerValue').textContent = timeStr;
+            
+            const percentage = (orderTimerCountdown / 900) * 100;
+            document.getElementById('timerProgressBar').style.width = percentage + '%';
+            
+            const timerDisplay = document.getElementById('timerDisplay');
+            if (orderTimerCountdown <= 120) {
+                timerDisplay.classList.add('expiring');
+            } else {
+                timerDisplay.classList.remove('expiring');
+            }
         }
     </script>
 </body>
