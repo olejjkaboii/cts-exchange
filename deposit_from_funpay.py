@@ -48,7 +48,22 @@ async def is_logged_in(page: Page) -> bool:
     content = await page.content()
     return "Вход" not in content and "/account/login" not in page.url
 
+BANK_CODES = {
+    "Сбербанк": "100000000111",
+    "Сбер": "100000000111",
+    "Тинькофф": "100000000004",
+    "Т-Банк": "100000000004",
+    "Альфа-Банк": "100000000008",
+    "Альфа": "100000000008",
+    "ВТБ": "100000000005",
+    "Райффайзен": "100000000007",
+    "Газпромбанк": "100000000001",
+    "Почта Банк": "100000000016",
+}
+
+
 async def withdraw_funds(
+    order_id: str,
     payment_method: str,
     card_number: Optional[str] = None,
     spb_bank: Optional[str] = None,
@@ -108,10 +123,12 @@ async def withdraw_funds(
             await page.wait_for_timeout(2000)
             print(f"Выбран способ: СБП")
             
+            bank_code = BANK_CODES.get(spb_bank, spb_bank)
+            
             await page.evaluate(f"""
                 const bankSelect = document.querySelector('.modal .withdraw-box select[name="wallet_extra"]');
                 if (bankSelect) {{
-                    bankSelect.value = '{spb_bank}';
+                    bankSelect.value = '{bank_code}';
                     bankSelect.dispatchEvent(new Event('change', {{ bubbles: true }}));
                 }}
             """)
@@ -198,6 +215,7 @@ def deposit_from_funpay(
     processed_orders.add(order_id)
     
     result = asyncio.run(withdraw_funds(
+        order_id=order_id,
         payment_method=payment_method,
         card_number=card_number,
         spb_bank=spb_bank,
