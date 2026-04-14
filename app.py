@@ -8,7 +8,7 @@ import sys
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
@@ -68,6 +68,14 @@ app.add_middleware(
 @app.get("/favicon.ico")
 async def favicon():
     return {"status": "ok"}
+
+@app.get("/usdt.svg")
+async def usdt_icon():
+    svg_path = os.path.join(BASE_DIR, "usdt.svg")
+    if os.path.exists(svg_path):
+        with open(svg_path, "rb") as f:
+            return Response(content=f.read(), media_type="image/svg+xml")
+    return {"error": "not found"}
 
 import os
 
