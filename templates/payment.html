@@ -49,7 +49,15 @@
             background: #222;
             color: #fff;
             transition: border-color 0.3s;
+            -moz-appearance: textfield;
         }
+        
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
         input:focus, select:focus {
             outline: none;
             border-color: #4f46e5;
@@ -111,14 +119,7 @@
             text-decoration: none;
             font-size: 14px;
         }
-        .rate-display {
-            background: linear-gradient(135deg, #1e1e3f 0%, #2d2d5a 100%);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-            border: 1px solid #3d3d6b;
-        }
+      
         .rate-display .label {
             color: #888;
             font-size: 12px;
@@ -244,7 +245,7 @@
             <div class="form-group">
                 <label>Сумма USDT</label>
                 <div class="input-with-icon">
-                    <input type="number" step="0.01" min="1" name="amount_usdt" id="amountInput" required placeholder="Введите сумму">
+                    <input type="number"  min="1" name="amount_usdt" id="amountInput" required placeholder="Введите сумму">
                     <img src="/usdt.svg" class="usdt-icon" alt="USDT">
                 </div>
                 <div class="receive-amount" id="receiveAmount">К получению: 0 ₽</div>
