@@ -40,15 +40,43 @@
             color: #aaa;
             font-weight: 500;
         }
-        input, select {
+input, select {
             width: 100%;
             padding: 14px;
-            border: 2px solid #333;
-            border-radius: 10px;
-            font-size: 16px;
-            background: #222;
-            color: #fff;
-            transition: border-color 0.3s;
+            border: 2px solid #ffffff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            background: #111;
+            color: #00ff00;
+            box-shadow: inset 0 0 10px #000;
+            transition: all 0.2s;
+            -moz-appearance: textfield;
+        }
+        
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        .input-with-icon {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .input-with-icon input {
+            padding-right: 50px;
+        }
+        
+        .input-with-icon .usdt-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            pointer-events: none;
         }
         input:focus, select:focus {
             outline: none;
@@ -225,7 +253,10 @@
         <form id="paymentForm">
             <div class="form-group">
                 <label>Сумма USDT</label>
-                <input type="number" step="0.01" min="1" name="amount_usdt" id="amountInput" required placeholder="Введите сумму">
+                <div class="input-with-icon">
+                    <input type="number" step="0.01" min="1" name="amount_usdt" id="amountInput" required placeholder="Введите сумму">
+                    <img src="/usdt.svg" class="usdt-icon" alt="USDT">
+                </div>
                 <div class="receive-amount" id="receiveAmount">К получению: 0 ₽</div>
             </div>
             
