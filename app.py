@@ -102,6 +102,7 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.now)
     amount_usdt = Column(Float)
     receive_amount = Column(Float)
+    rate = Column(Float)
     payment_method = Column(String)  # card or spb
     card_number = Column(String, nullable=True)
     spb_bank = Column(String, nullable=True)
@@ -161,10 +162,13 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     if not deposit_address:
         raise HTTPException(status_code=500, detail="Не удалось получить адрес депозита")
     
+    current_rate = get_current_rate()
+    
     new_order = Order(
         order_id=order_id,
         amount_usdt=order.amount_usdt,
         receive_amount=order.receive_amount,
+        rate=current_rate,
         payment_method=order.method,
         card_number=order.card_number,
         spb_bank=order.spb_bank,
@@ -246,6 +250,7 @@ async def create_order(order: OrderCreate, db: Session = Depends(get_db)):
         "order_id": new_order.order_id,
         "deposit_address": new_order.deposit_address,
         "amount_usdt": new_order.amount_usdt,
+        "rate": new_order.rate,
         "status": new_order.status,
         "created_at": new_order.created_at.isoformat()
     }
@@ -314,6 +319,41 @@ async def get_usdt_rate():
         if rate_cache["rate"]:
             return {"rate": rate_cache["rate"], "source": "Rapira (cached)"}
         return {"error": str(e)}
+
+
+def get_current_rate() -> float:
+    import time
+    import requests
+    
+    if rate_cache["rate"] and (time.time() - rate_cache["time"]) < 60:
+        return rate_cache["rate"] * 0.97
+    
+    try:
+        from xml.etree import ElementTree as ET
+        
+        url = 'https://api.rapira.net/open/market/rates_xml'
+        headers = {'Accept': 'application/xml'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        root = ET.fromstring(response.content)
+        for item in root.findall('item'):
+            fr = item.find('from').text
+            to = item.find('to').text
+            out = item.find('out').text
+            if fr == 'USDT' and to == 'RUB':
+                rate_cache["rate"] = float(out)
+                rate_cache["time"] = time.time()
+                return float(out) * 0.97
+        
+        if rate_cache["rate"]:
+            return rate_cache["rate"] * 0.97
+        return 0.0
+    except:
+        if rate_cache["rate"]:
+            return rate_cache["rate"] * 0.97
+        return 0.0
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

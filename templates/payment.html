@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Оплата USDT</title>
+    <title>exchange</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -28,11 +28,11 @@
         h1 {
             color: #fff;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             font-size: 24px;
         }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         label {
             display: block;
@@ -51,13 +51,11 @@
             transition: border-color 0.3s;
             -moz-appearance: textfield;
         }
-        
         input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
+        input::-webkit-inner-spin-button{
             -webkit-appearance: none;
             margin: 0;
         }
-        
         input:focus, select:focus {
             outline: none;
             border-color: #4f46e5;
@@ -144,6 +142,7 @@
             background: #333;
             border-radius: 2px;
             margin-top: 10px;
+            margin-bottom: 10px;
             overflow: hidden;
         }
         .rate-progress-bar {
@@ -160,12 +159,11 @@
             font-weight: 500;
         }
         .timer-display {
-            background: linear-gradient(135deg, #3d1515 0%, #5a2020 100%);
-            padding: 15px;
-            border-radius: 12px;
+            
+            
             margin-top: 15px;
             text-align: center;
-            border: 1px solid #6b3030;
+            
         }
         .timer-display .label {
             color: #888;
@@ -180,6 +178,7 @@
         .timer-display.expiring {
             background: linear-gradient(135deg, #3d1515 0%, #7a2020 100%);
             animation: pulse 1s infinite;
+            transition: width 1s linear;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -229,6 +228,13 @@
             height: 28px;
             pointer-events: none;
         }
+        /*.custom-hr {
+            border: none;                
+            background-color: #333;      
+            height: 2px;                
+            width: 100%;                 
+            margin: 20px auto;           
+        }*/
     </style>
 </head>
 <body>
@@ -240,7 +246,7 @@
                 <div class="rate-progress-bar" id="rateProgressBar"></div>
             </div>
         </div>
-        <h1>Оплата USDT</h1>
+        <h1>Обмен USDT</h1>
         <form id="paymentForm">
             <div class="form-group">
                 <label>Сумма USDT</label>
@@ -290,7 +296,7 @@
                 <label>Номер телефона для СБП</label>
                 <input type="tel" name="phone" placeholder="+7 999 123-45-67">
             </div>
-            
+            <!-- <hr class="custom-hr"> -->
             <button type="submit" id="submitBtn">Создать заказ</button>
         </form>
         
@@ -298,6 +304,7 @@
             <h3>Заказ создан!</h3>
             <p><span class="label">ID заказа:</span> <span class="value" id="resOrderId"></span></p>
             <p><span class="label">Сумма:</span> <span class="value" id="resAmount"></span> USDT</p>
+            <p><span class="label">Курс:</span> <span class="value" id="resRate"></span> ₽</p>
             <p><span class="label">Адрес для оплаты (TRC20):</span></p>
             <p class="value" id="resAddress"></p>
             <button class="copy-btn" onclick="copyAddress()">Копировать адрес</button>
@@ -310,15 +317,15 @@
                 <div class="label">Время до истечения заказа</div>
                 <div class="value" id="timerValue">15:00</div>
                 <div class="rate-progress">
-                    <div class="rate-progress-bar" id="timerProgressBar"></div>
+                    <div class="timer-display.expiring" id="timerProgressBar"></div>
                 </div>
             </div>
         </div>
         
-        <div class="admin-link">
+       <!-- <div class="admin-link">
             <a href="/admin">Админ-панель</a>
         </div>
-    </div>
+    </div>-->
 
     <script>
         let currentRate = 0;
@@ -413,6 +420,7 @@
                 if (response.ok) {
                     document.getElementById('resOrderId').textContent = data.order_id;
                     document.getElementById('resAmount').textContent = data.amount_usdt;
+                    document.getElementById('resRate').textContent = data.rate ? data.rate.toFixed(2) : '-';
                     document.getElementById('resAddress').textContent = data.deposit_address;
                     document.getElementById('resStatus').textContent = data.status;
                     document.getElementById('result').classList.add('show');
